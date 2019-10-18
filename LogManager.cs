@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using System.Collections;
 using UnityStandardAssets.Characters.FirstPerson;
 using System.IO;
 
@@ -10,24 +12,37 @@ public class LogManager : MonoBehaviour
 {
     string FILE_NAME = "test";
     string OBJ_FILE_NAME = "test";
-    private GameObject chair, sball, bucket, cone, object31, object32;
+    private GameObject object31, object32;
     public Vector3 playerPos;
-    public Quaternion playerRot;
+    public Vector3 playerRot;
     private FirstPersonController fps;
     private static bool created = false;
     public GameObject[] targetsWithTag;
-    public string target;
-    private GameObject targetObj;
+    public GameObject target, spawn;
+    private GameObject targetObject;
     public Vector3 playerStart;
+    public static float delayTime;
+    public Randomizev2 m_Randomizev2;
+    public float totalDistanceTraveled = 0f;
+    public float totalDegreesRotatedY = 0f;
+    public float totalDegreesRotatedW = 0f;
+    public float avgSpeed = 0f;
+    public float sumSpeed = 0f;
+    public int cpdIteration = 0;
+    public Vector3 lastPosition = Vector3.zero;
+    public Vector3 lastRotation;
+    public Text targetText;
+
 
 
     // Start is called before the first frame update
     void Start()
     {
         // Call the CollectPositionData() Method Once every 1/10th of a second (10Hz)
-        InvokeRepeating("CollectPositionData", 1.0f, 0.1f);
+        InvokeRepeating("CollectPositionData", 0f, 0.1f);
+        m_Randomizev2 = GameObject.FindObjectOfType(typeof(Randomizev2)) as Randomizev2;
 
-        
+
     }
 
     void Awake()
@@ -42,24 +57,14 @@ public class LogManager : MonoBehaviour
 
     void CollectPositionData()
     {
-
-        // Every 10 Hz after start, grab Variables: 
-        // pos_x, pos_z, rot_x, rot_y, rot_z, rot_w, time, target_obj, trial_level, delta_target, delta_start
-
-        // Position variables X and Z. Y is not needed as height does not change throughout experiment.
-        float pos_x = playerPos.x, pos_z = playerPos.z;
-        // Rotation around [variable] axis. X, Y, Z is a vector. W is a scalar of rotation around that vector.
-        float rot_x = playerRot.x, rot_y = playerRot.y, rot_z = playerRot.z, rot_w = playerRot.w;
-        // Current Trial Level: if new trial level, update variable as well as start position **** PROBLEM BUG: SPAWNPOShg
-
-
         
-
+        // Every 10 Hz after start, grab Variables
         // Distance from player to target object, and distance from player spawn to current player location
-        targetObj = GameObject.Find(target);
 
-
-        float deltaTarget = Vector3.Distance(targetObj.transform.position, fps.transform.position);
+        ++cpdIteration;
+        avgSpeed = (fps.m_Speed + sumSpeed) / cpdIteration;
+        sumSpeed = fps.m_Speed + sumSpeed;
+        float deltaTarget = Vector3.Distance(target.transform.position, fps.transform.position);
         float deltaStart = Vector3.Distance(GameObject.FindWithTag("spawn").transform.position, fps.transform.position);
 
 
@@ -67,38 +72,64 @@ public class LogManager : MonoBehaviour
         StreamWriter sw = File.AppendText(FILE_NAME);
         if (new FileInfo(FILE_NAME).Length == 0)
         {
-            sw.WriteLine("pos_x, pos_z, rot_x, rot_y, rot_z, rot_w, time, target_obj, trial_level, delta_target, delta_start");
+            sw.WriteLine("pos_x, pos_z, rot_y, time, target_obj, trial_level, delta_target, " +
+                "delta_start, speed, tot_dist, tot_rot_y");
         }
         
-        sw.WriteLine(pos_x + "," + pos_z + "," + rot_x + "," + rot_y + "," + rot_z + "," + rot_w + "," + Time.time
-            + "," + target + "," + SceneManager.GetActiveScene().name + "," + deltaTarget + "," + deltaStart);
+        sw.WriteLine(
+            playerPos.x + "," + playerPos.z + "," + 
+            playerRot.y + "," + 
+            Time.time + "," + target + "," + 
+            SceneManager.GetActiveScene().name + "," + 
+            deltaTarget + "," + deltaStart + "," + 
+            fps.m_Speed + "," +  totalDistanceTraveled + "," + 
+            totalDegreesRotatedY);
         sw.Close();
+        
+
     }
 
     void CollectResponseData()
-    { 
+    {
+        
+
         StreamWriter writedist = File.AppendText(OBJ_FILE_NAME);
-        if (new FileInfo(OBJ_FILE_NAME).Length == 0)
+        if (new FileInfo(OBJ_FILE_NAME).Length == 0)          
         {
-            writedist.WriteLine("target_obj, trial_level, start_x, start_z, end_x, end_z, end_rot_x, end_rot_y, end_rot_z, " +
-                "end_rot_w, start_delta_target, end_delta_target, run_time, completion_time");
+            writedist.WriteLine("target_obj, trial_level, start_x, start_z, start_rot_y, , end_x, end_z, end_rot_y, " +
+                "start_delta_target, end_delta_target, run_time, completion_time," +
+                "tot_dist, tot_rot_y, sl_dist, efficiency, avg_speed");
         }
+        target = GameObject.FindWithTag("target");
+        spawn = GameObject.FindWithTag("spawn");
+
+
         // Upon response event from participant, record data variables to #_responses:
         //      target_obj, trial_level, start_x, start_z, end_x, end_z, end_rot_x, end_rot_y, end_rot_z, end_rot_w, 
         //      start_delta_target, end_delta_target, run_time, completion_time
-
-        writedist.WriteLine(target + "," + SceneManager.GetActiveScene().name + "," + 
-            GameObject.FindWithTag("spawn").transform.position.x + "," +
-            GameObject.FindWithTag("spawn").transform.position.z + "," + 
+        float slDist = Vector3.Distance(target.transform.position, spawn.transform.position);
+        writedist.WriteLine(target.name + "," + SceneManager.GetActiveScene().name + "," + 
+            spawn.transform.position.x + "," + spawn.transform.position.z + "," +
+            spawn.transform.eulerAngles.y + "," +
             fps.transform.position.x + "," + fps.transform.position.z + "," +
-            fps.transform.rotation.x + "," + fps.transform.rotation.y + "," + 
-            fps.transform.rotation.z + "," + fps.transform.rotation.w + "," +
-            Vector3.Distance(GameObject.FindWithTag("spawn").transform.position, fps.transform.position) + "," +
-            Vector3.Distance(GameObject.FindWithTag("target").transform.position, fps.transform.position) + "," +
-            Time.time + "," + (Time.time - Randomizev2.startTime));
+            fps.transform.eulerAngles.y + "," +
+            Vector3.Distance(spawn.transform.position, fps.transform.position) + "," +
+            Vector3.Distance(target.transform.position, fps.transform.position) + "," +
+            Time.time + "," + (Time.time - Randomizev2.startTime) + "," +
+            totalDistanceTraveled + "," + totalDegreesRotatedY + "," +
+            slDist + "," + (totalDistanceTraveled/slDist) + "," + avgSpeed);
         writedist.Close();
 
+        // Check to see if we are in testing phase (test trials), if so, set trial phase to 2 (uncollected data)
+        if(ParticipantLog.trialPhase != 3)
+        {
+            ParticipantLog.trialPhase = 2;
+        }
+        
+
+        
     }
+
 
     // Update is called once per frame
     void Update()
@@ -107,15 +138,55 @@ public class LogManager : MonoBehaviour
         fps = FindObjectOfType<FirstPersonController>();
         
         // With each update, obtain necessary data
-
+        // Player position and player rotation 
         playerPos = fps.transform.position;
-        playerRot = fps.transform.rotation;
+        playerRot = fps.transform.eulerAngles;
 
-        GameObject[] targetsWithTag = GameObject.FindGameObjectsWithTag("target");
-        foreach (GameObject targ in targetsWithTag)
+        // If new trial, assign last position and last rotation to current position and rotation
+        if (lastPosition == Vector3.zero)
         {
-            target = targ.name;
+            lastPosition = playerPos;
+            lastRotation = playerRot;
+            avgSpeed = 0f;
+            sumSpeed = 0f;
+            cpdIteration = 0;
+            targetText = GameObject.FindObjectOfType<Text>();
+            target = GameObject.FindWithTag("target");
+            string targetName = target.name;
+            switch(targetName)
+            {
+                case "Bucket_clean":
+                    targetName = "Bucket";
+                    break;
+
+                case "cone_clean":
+                    targetName = "Cone";
+                    break;
+
+                case "chFolding.A_LOD0":
+                    targetName = "Chair";
+                    break;
+
+            }
+            targetText.text = targetName;
+
         }
+
+        // Calculate total degrees rotated since last update, do same for distance. 
+        // These will be used in CollectResponseData() and CollectPositionData() methods.
+        float degreesRotatedY = Mathf.Abs(fps.transform.eulerAngles.y - lastRotation.y);
+        totalDegreesRotatedY += degreesRotatedY;
+
+
+        float distTrav = Vector3.Distance(playerPos, lastPosition);
+        totalDistanceTraveled += distTrav;
+        
+        // Update last position and rotation to current rotation for use within the next update
+        lastPosition = playerPos;
+        lastRotation = playerRot;
+
+        target = GameObject.FindWithTag("target");
+
 
         // Upon initial trial load, set file name to participant number entered on launch
         if (FILE_NAME == "test" && OBJ_FILE_NAME == "test")
@@ -127,59 +198,64 @@ public class LogManager : MonoBehaviour
         }
 
 
-        //if key is pressed and the folding chair exists in the scene
-        if (Input.GetKeyDown("1") && GameObject.Find("chFolding.A_LOD0") != null)
+        if (Input.GetKeyDown(KeyCode.Return))
         {
-            chair = GameObject.Find("chFolding.A_LOD0");
-            fps.m_WalkSpeed = 0f;
-            float distance = Vector3.Distance(chair.transform.position, fps.transform.position);
-            MeshRenderer m = chair.GetComponent<MeshRenderer>();
-            m.enabled = true;
-            CollectResponseData();
+            Debug.Log("SL: " + ParticipantLog.trialPhase);
+            // Once object is found, upon response move to next trial.
+            if (ParticipantLog.trialPhase == 2)
+            {
+                m_Randomizev2.NextScene();
+                totalDistanceTraveled = 0;
+                totalDegreesRotatedW = 0;
+                totalDegreesRotatedY = 0;
+                lastPosition = Vector3.zero;
+                sumSpeed = 0f;
+                avgSpeed = 0f;
+                cpdIteration = 0;
+                
+
+            }
+            // Check to see if Practice trial, if so, upon response reveal location of object.
+            else if (ParticipantLog.trialPhase == 1)
+            {
+                targetObject = GameObject.FindWithTag("target");
+
+                if (targetObject.name == "Bucket_clean")
+                {
+                    object31 = GameObject.Find("bucket_low");
+                    object32 = GameObject.Find("rings_low");
+                    object31.GetComponent<MeshRenderer>().enabled = true;
+                    object32.GetComponent<MeshRenderer>().enabled = true;
+                }
+                else
+                {
+                    MeshRenderer m = targetObject.GetComponent<MeshRenderer>();
+                    m.enabled = true;
+                }
+
+                fps.m_WalkSpeed = 0f;
+                fps.m_RunSpeed = 0f;
+
+
+                CollectResponseData();
+
+
+            }
+            // Check to see if Test trial. Upon response, no feedback (reveal object). 
+            // Immediately begin next test trial.
+            else if (ParticipantLog.trialPhase == 3)
+            {
+                CollectResponseData();
+                totalDistanceTraveled = 0;
+                totalDegreesRotatedW = 0;
+                totalDegreesRotatedY = 0;
+                lastPosition = Vector3.zero;
+                sumSpeed = 0f;
+                avgSpeed = 0f;
+                cpdIteration = 0;
+                m_Randomizev2.NextScene();
+            }
         }
-
-        //if key is pressed and the Soccer Ball exists in the scene
-        if (Input.GetKeyDown("1") && GameObject.Find("Soccer Ball") != null)
-        {
-            sball = GameObject.Find("Soccer Ball");
-            fps.m_WalkSpeed = 0f;
-            float distance = Vector3.Distance(sball.transform.position, fps.transform.position);
-            MeshRenderer m = sball.GetComponent<MeshRenderer>();
-            m.enabled = true;
-            CollectResponseData();
-           
-        }
-
-        //if key is pressed and the Bucket exists in the scene
-        if (Input.GetKeyDown("1") && GameObject.Find("Bucket_clean") != null)
-        {
-            bucket = GameObject.Find("Bucket_clean");
-            object31 = GameObject.Find("bucket_low");
-            object32 = GameObject.Find("rings_low");
-            fps.m_WalkSpeed = 0f;
-            float distance = Vector3.Distance(bucket.transform.position, fps.transform.position);
-            
-            MeshRenderer n = object31.GetComponent<MeshRenderer>();
-            MeshRenderer o = object32.GetComponent<MeshRenderer>();
-          
-            n.enabled = true;
-            o.enabled = true;
-            CollectResponseData();
-
-        }
-
-        //if key is pressed and the Cone exists in the scene
-        if (Input.GetKeyDown("1") && GameObject.Find("cone_clean") != null)
-        {
-            cone = GameObject.Find("cone_clean");
-            fps.m_WalkSpeed = 0f;
-            float distance = Vector3.Distance(cone.transform.position, fps.transform.position);
-            MeshRenderer m = cone.GetComponent<MeshRenderer>();
-            m.enabled = true;
-            CollectResponseData();
-
-        }
-
     }
 }
 

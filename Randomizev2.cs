@@ -20,7 +20,10 @@ public class Randomizev2 : MonoBehaviour
     public static int currentLevel;
     public static float startTime;
     public bool learnTrialsCompleted = false;
+    public bool practiceTrialsCompleted = false;
     public int learnTrials = 1;
+    public int practiceTrials = 1;
+    public static bool OFT_COMPLETE = false;
 
 
     void Start()
@@ -32,8 +35,9 @@ public class Randomizev2 : MonoBehaviour
         // Check to see if Learning trials have been completed, if not, 
         // select the next learning trial in sequential order.
 
-        if (learnTrialsCompleted)
+        if (learnTrialsCompleted && practiceTrialsCompleted)
         {
+            ParticipantLog.trialPhase = 3;
             // While levels completed do not reach max trials, randomly select without replacement
             // the next testing trial
             while (levels.Count != numlevel)
@@ -42,12 +46,29 @@ public class Randomizev2 : MonoBehaviour
                 //Debug.Log(randNum + " = generated");
                 if (levels.Add(randNum))
                 {
-                    nextLevel = randNum + 4;
+                    nextLevel = randNum + 8;
                     Debug.Log("Trial level: " + randNum + " picked");
+                    Debug.Log(levels.Count);
+                    if (levels.Count == numlevel)
+                    {
+                        OFT_COMPLETE = true;
+                    }
                     break;
                 }
             }
-        } else
+        } 
+        else if (learnTrialsCompleted && !practiceTrialsCompleted)
+        {
+            nextLevel = practiceTrials + 4;
+            Debug.Log("Practice Level: " + (nextLevel - 4) + " picked");
+            practiceTrials += 1;
+
+            if (practiceTrials == 5)
+            {
+                practiceTrialsCompleted = true;
+            }
+        }
+        else
         {
             // Sequentially go through each of the four learning trials before beginning 
             // the testing phase
@@ -76,24 +97,28 @@ public class Randomizev2 : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        // "k" = move onto next scene
-        if (Input.GetKeyDown(KeyCode.K))
-            {
-                LevelPick();
-                SceneManager.LoadScene(nextLevel);
-
-                StreamWriter writelevel = File.AppendText(FILE_NAME);
-                writelevel.WriteLine("level " + nextLevel + " loaded");
-                writelevel.Close();
-                StreamWriter writelevelobj = File.AppendText(OBJ_FILE_NAME);
-                writelevelobj.WriteLine("level " + nextLevel + " loaded");                
-                writelevelobj.Close();
-                currentLevel = nextLevel;
-                startTime = Time.time;
-
-
-                
-            }
-    }
 
     }
+
+    public void NextScene()
+    {
+        LevelPick();
+        SceneManager.LoadScene(nextLevel);
+        StreamWriter writelevel = File.AppendText(FILE_NAME);
+        writelevel.WriteLine("level " + nextLevel + " loaded");
+        writelevel.Close();
+        StreamWriter writelevelobj = File.AppendText(OBJ_FILE_NAME);
+        writelevelobj.WriteLine("level " + nextLevel + " loaded");
+        writelevelobj.Close();
+        currentLevel = nextLevel;
+        startTime = Time.time;
+        if (ParticipantLog.trialPhase != 3)
+        {
+            ParticipantLog.trialPhase = 1;
+        }
+
+               
+        
+    }
+
+}
