@@ -24,6 +24,9 @@ public class Randomizev2 : MonoBehaviour
     public int learnTrials = 1;
     public int practiceTrials = 1;
     public static bool OFT_COMPLETE = false;
+    private bool instructions = false;
+    private bool practiceInstructionsViewed = false;
+    private bool testInstructionsViewed = false;
 
 
     void Start()
@@ -35,41 +38,52 @@ public class Randomizev2 : MonoBehaviour
         // Check to see if Learning trials have been completed, if not, 
         // select the next learning trial in sequential order.
 
-        if (learnTrialsCompleted && practiceTrialsCompleted)
+        if (learnTrialsCompleted && practiceTrialsCompleted && testInstructionsViewed)
         {
             ParticipantLog.trialPhase = 3;
             // While levels completed do not reach max trials, randomly select without replacement
             // the next testing trial
-            while (levels.Count != numlevel)
-            {
-                int randNum = UnityEngine.Random.Range(1, numlevel+1);
-                //Debug.Log(randNum + " = generated");
-                if (levels.Add(randNum))
-                {
-                    nextLevel = randNum + 8;
-                    Debug.Log("Trial level: " + randNum + " picked");
-                    Debug.Log(levels.Count);
-                    if (levels.Count == numlevel)
-                    {
-                        OFT_COMPLETE = true;
-                    }
-                    break;
-                }
-            }
-        } 
-        else if (learnTrialsCompleted && !practiceTrialsCompleted)
-        {
-            nextLevel = practiceTrials + 4;
-            Debug.Log("Practice Level: " + (nextLevel - 4) + " picked");
-            practiceTrials += 1;
 
-            if (practiceTrials == 5)
-            {
-                practiceTrialsCompleted = true;
-            }
-        }
-        else
+            // Display test instructions if they haven't been viewed already
+
+                while (levels.Count != numlevel)
+                {
+                    int randNum = UnityEngine.Random.Range(1, numlevel+1);
+                    //Debug.Log(randNum + " = generated");
+                    if (levels.Add(randNum))
+                    {
+                        nextLevel = randNum + 8;
+                        Debug.Log("Trial level: " + randNum + " picked");
+                        Debug.Log(levels.Count);
+                        if (levels.Count == numlevel)
+                        {
+                            OFT_COMPLETE = true;
+                        }
+                        break;
+                    }
+                }
+            
+            
+        } 
+        else if (learnTrialsCompleted && !practiceTrialsCompleted && practiceInstructionsViewed)
         {
+
+           
+            
+                nextLevel = practiceTrials + 4;
+                Debug.Log("Practice Level: " + (nextLevel - 4) + " picked");
+                practiceTrials += 1;
+
+                if (practiceTrials == 5)
+                {
+                    practiceTrialsCompleted = true;
+                }
+            
+           
+        }
+        else if(instructions && !learnTrialsCompleted)
+        {
+            
             // Sequentially go through each of the four learning trials before beginning 
             // the testing phase
             nextLevel = learnTrials;
@@ -79,7 +93,28 @@ public class Randomizev2 : MonoBehaviour
             if (learnTrials == 5)
             {
                 learnTrialsCompleted = true;
+                LogManager.radiusThreshold = 50;
             }
+        } 
+        else
+        {
+            if (!testInstructionsViewed && practiceInstructionsViewed && instructions)
+            {
+                nextLevel = 36;
+                Debug.Log("Test Instructions");
+            }
+            else if (!testInstructionsViewed && !practiceInstructionsViewed && instructions)
+            {
+                nextLevel = 35;
+                Debug.Log("Practice Instructions");
+            }
+            else
+            {
+                nextLevel = 34;
+                Debug.Log("Instructions");
+            }
+            
+
         }
         
     }
@@ -97,13 +132,46 @@ public class Randomizev2 : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        // If the current scene is Instructions and the participant presses ENTER, move on to the next scene (Learn Trial 01)
+        if (Input.GetKeyDown(KeyCode.Return))
+        {
+            if (!instructions && SceneManager.GetActiveScene().name == "Instructions")
+            {
+                instructions = true;
+                NextScene();
+            }
+            else if (!testInstructionsViewed && SceneManager.GetActiveScene().name == "Instructions Test")
+            {
+                testInstructionsViewed = true;
+                NextScene();
+            } 
+            else if (!practiceInstructionsViewed && SceneManager.GetActiveScene().name == "Instructions Practice")
+            {
+                practiceInstructionsViewed = true;
+                NextScene();
+            }
+            
+        } 
+    }
 
+    public void StartPause()
+    {
+        StartCoroutine(PauseGame());
+    }
+    public IEnumerator PauseGame()
+    {
+        SceneManager.LoadScene("Fixation");
+        Debug.Log("SHOOT");
+        yield return new WaitForSeconds(3);
+        SceneManager.LoadScene(nextLevel);
     }
 
     public void NextScene()
     {
         LevelPick();
-        SceneManager.LoadScene(nextLevel);
+        StartPause();
+        
+
         StreamWriter writelevel = File.AppendText(FILE_NAME);
         writelevel.WriteLine("level " + nextLevel + " loaded");
         writelevel.Close();
@@ -116,6 +184,7 @@ public class Randomizev2 : MonoBehaviour
         {
             ParticipantLog.trialPhase = 1;
         }
+        LogManager.newTrial = true;
 
                
         

@@ -43,6 +43,7 @@ public class ParticipantLog : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Return))
         {
+            
             SubmitID();
         }
     }

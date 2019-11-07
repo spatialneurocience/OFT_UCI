@@ -32,7 +32,9 @@ public class LogManager : MonoBehaviour
     public Vector3 lastPosition = Vector3.zero;
     public Vector3 lastRotation;
     public Text targetText;
-
+    public static float radiusThreshold = 5;
+    public string targetName;
+    public static bool newTrial = false;
 
 
     // Start is called before the first frame update
@@ -72,14 +74,15 @@ public class LogManager : MonoBehaviour
         StreamWriter sw = File.AppendText(FILE_NAME);
         if (new FileInfo(FILE_NAME).Length == 0)
         {
-            sw.WriteLine("pos_x, pos_z, rot_y, time, target_obj, trial_level, delta_target, " +
+            sw.WriteLine("pos_x, pos_z, rot_y, run_time, trial_time, target_obj, trial_level, delta_target, " +
                 "delta_start, speed, tot_dist, tot_rot_y");
         }
         
         sw.WriteLine(
             playerPos.x + "," + playerPos.z + "," + 
             playerRot.y + "," + 
-            Time.time + "," + target + "," + 
+            Time.time + "," + (Time.time - Randomizev2.startTime) + "," +
+            target.name + "," + 
             SceneManager.GetActiveScene().name + "," + 
             deltaTarget + "," + deltaStart + "," + 
             fps.m_Speed + "," +  totalDistanceTraveled + "," + 
@@ -96,8 +99,8 @@ public class LogManager : MonoBehaviour
         StreamWriter writedist = File.AppendText(OBJ_FILE_NAME);
         if (new FileInfo(OBJ_FILE_NAME).Length == 0)          
         {
-            writedist.WriteLine("target_obj, trial_level, start_x, start_z, start_rot_y, , end_x, end_z, end_rot_y, " +
-                "start_delta_target, end_delta_target, run_time, completion_time," +
+            writedist.WriteLine("target_obj, trial_level, start_x, start_z, start_rot_y, end_x, end_z, end_rot_y, " +
+                "delta_start, delta_target, run_time, completion_time," +
                 "tot_dist, tot_rot_y, sl_dist, efficiency, avg_speed");
         }
         target = GameObject.FindWithTag("target");
@@ -105,8 +108,7 @@ public class LogManager : MonoBehaviour
 
 
         // Upon response event from participant, record data variables to #_responses:
-        //      target_obj, trial_level, start_x, start_z, end_x, end_z, end_rot_x, end_rot_y, end_rot_z, end_rot_w, 
-        //      start_delta_target, end_delta_target, run_time, completion_time
+
         float slDist = Vector3.Distance(target.transform.position, spawn.transform.position);
         writedist.WriteLine(target.name + "," + SceneManager.GetActiveScene().name + "," + 
             spawn.transform.position.x + "," + spawn.transform.position.z + "," +
@@ -143,7 +145,7 @@ public class LogManager : MonoBehaviour
         playerRot = fps.transform.eulerAngles;
 
         // If new trial, assign last position and last rotation to current position and rotation
-        if (lastPosition == Vector3.zero)
+        if (newTrial)
         {
             lastPosition = playerPos;
             lastRotation = playerRot;
@@ -152,8 +154,15 @@ public class LogManager : MonoBehaviour
             cpdIteration = 0;
             targetText = GameObject.FindObjectOfType<Text>();
             target = GameObject.FindWithTag("target");
-            string targetName = target.name;
-            switch(targetName)
+            targetName = target.name;
+            totalDistanceTraveled = 0;
+            totalDegreesRotatedW = 0;
+            totalDegreesRotatedY = 0;
+            lastPosition = Vector3.zero;
+            sumSpeed = 0f;
+            avgSpeed = 0f;
+            cpdIteration = 0;
+            switch (targetName)
             {
                 case "Bucket_clean":
                     targetName = "Bucket";
@@ -169,6 +178,8 @@ public class LogManager : MonoBehaviour
 
             }
             targetText.text = targetName;
+            newTrial = false;
+
 
         }
 
@@ -201,43 +212,49 @@ public class LogManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Return))
         {
             Debug.Log("SL: " + ParticipantLog.trialPhase);
-            // Once object is found, upon response move to next trial.
+
+            // Trial phase 2: Learn & Practice trials only. It means that the first phase has passed and the participant pressed the first Enter. This phase asks for confirmation before moving on.
             if (ParticipantLog.trialPhase == 2)
             {
                 m_Randomizev2.NextScene();
-                totalDistanceTraveled = 0;
-                totalDegreesRotatedW = 0;
-                totalDegreesRotatedY = 0;
-                lastPosition = Vector3.zero;
-                sumSpeed = 0f;
-                avgSpeed = 0f;
-                cpdIteration = 0;
+                
                 
 
             }
-            // Check to see if Practice trial, if so, upon response reveal location of object.
+            // Trial phase 1: Learn & Practice trials only. This is where OFT is waiting for the participant to respond with the first Enter press.
             else if (ParticipantLog.trialPhase == 1)
             {
                 targetObject = GameObject.FindWithTag("target");
-
-                if (targetObject.name == "Bucket_clean")
+                float distanceToTO = Vector3.Distance(targetObject.transform.position, fps.transform.position);
+                if (distanceToTO < radiusThreshold)
                 {
-                    object31 = GameObject.Find("bucket_low");
-                    object32 = GameObject.Find("rings_low");
-                    object31.GetComponent<MeshRenderer>().enabled = true;
-                    object32.GetComponent<MeshRenderer>().enabled = true;
+                    if (targetObject.name == "Bucket_clean")
+                    {
+                        object31 = GameObject.Find("bucket_low");
+                        object32 = GameObject.Find("rings_low");
+                        object31.GetComponent<MeshRenderer>().enabled = true;
+                        object32.GetComponent<MeshRenderer>().enabled = true;
+                    }
+                    else
+                    {
+                        MeshRenderer m = targetObject.GetComponent<MeshRenderer>();
+                        m.enabled = true;
+                    }
+
+                    fps.m_WalkSpeed = 0f;
+                    fps.m_RunSpeed = 0f;
+                    targetText.text = "Good Job!";
+
+
+                    CollectResponseData();
                 }
                 else
                 {
-                    MeshRenderer m = targetObject.GetComponent<MeshRenderer>();
-                    m.enabled = true;
+                    
+                    targetText.text = targetName + " Too Far! Distance to target: " + distanceToTO;
                 }
 
-                fps.m_WalkSpeed = 0f;
-                fps.m_RunSpeed = 0f;
-
-
-                CollectResponseData();
+                
 
 
             }
@@ -246,13 +263,6 @@ public class LogManager : MonoBehaviour
             else if (ParticipantLog.trialPhase == 3)
             {
                 CollectResponseData();
-                totalDistanceTraveled = 0;
-                totalDegreesRotatedW = 0;
-                totalDegreesRotatedY = 0;
-                lastPosition = Vector3.zero;
-                sumSpeed = 0f;
-                avgSpeed = 0f;
-                cpdIteration = 0;
                 m_Randomizev2.NextScene();
             }
         }
