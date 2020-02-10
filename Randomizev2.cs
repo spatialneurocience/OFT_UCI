@@ -54,7 +54,7 @@ public class Randomizev2 : MonoBehaviour
                     {
                         nextLevel = randNum + 8;
                         Debug.Log("Trial level: " + randNum + " picked");
-                        Debug.Log(levels.Count);
+
                         if (levels.Count == numlevel)
                         {
                             OFT_COMPLETE = true;
@@ -93,7 +93,7 @@ public class Randomizev2 : MonoBehaviour
             if (learnTrials == 5)
             {
                 learnTrialsCompleted = true;
-                LogManager.radiusThreshold = 50;
+
             }
         } 
         else
@@ -160,16 +160,22 @@ public class Randomizev2 : MonoBehaviour
     }
     public IEnumerator PauseGame()
     {
+        
         SceneManager.LoadScene("Fixation");
-        Debug.Log("SHOOT");
         yield return new WaitForSeconds(3);
         SceneManager.LoadScene(nextLevel);
+
+
+
     }
 
     public void NextScene()
     {
+        Debug.Log("NS");
         LevelPick();
         StartPause();
+        
+
         
 
         StreamWriter writelevel = File.AppendText(FILE_NAME);
@@ -178,16 +184,30 @@ public class Randomizev2 : MonoBehaviour
         StreamWriter writelevelobj = File.AppendText(OBJ_FILE_NAME);
         writelevelobj.WriteLine("level " + nextLevel + " loaded");
         writelevelobj.Close();
-        currentLevel = nextLevel;
+
+        if (nextLevel == currentLevel)
+        {
+            TipboxManager.text_tip = "YOU ARE DONE. PRESS Ctrl+P TO EXIT PILOT TEST.";
+        } else
+        {
+            currentLevel = nextLevel;
+            TipboxManager.text_tip = "";
+            if (currentLevel >= 5 && currentLevel <= 8) { TipboxManager.text_tip = "*** Go to where you believe the target is! ***";  }
+        }
+       
         startTime = Time.time;
         if (ParticipantLog.trialPhase != 3)
         {
             ParticipantLog.trialPhase = 1;
         }
-        LogManager.newTrial = true;
 
-               
-        
+        LogManager.newTrial = true;
+        Debug.Log(LogManager.objTextFile);
+
+
+
+
+
     }
 
 }
