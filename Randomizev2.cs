@@ -11,7 +11,7 @@ public class Randomizev2 : MonoBehaviour
 {
     // Creating a HashSet of odd numbers 
     HashSet<int> levels = new HashSet<int>();
-    private int numlevel = 24;
+    private int numlevel = 25;
     private static bool created = false;
     public static int nextLevel = 0;
     string FILE_NAME = "position.txt";
@@ -54,10 +54,11 @@ public class Randomizev2 : MonoBehaviour
                     {
                         nextLevel = randNum + 8;
                         Debug.Log("Trial level: " + randNum + " picked");
-
+                        Debug.Log(levels.Count);
                         if (levels.Count == numlevel)
                         {
                             OFT_COMPLETE = true;
+                            nextLevel = 37;     // lEVEL 37 IS INSTRUCTIONS COMPLETE.
                         }
                         break;
                     }
@@ -160,22 +161,16 @@ public class Randomizev2 : MonoBehaviour
     }
     public IEnumerator PauseGame()
     {
-        
         SceneManager.LoadScene("Fixation");
+        Debug.Log("SHOOT");
         yield return new WaitForSeconds(3);
         SceneManager.LoadScene(nextLevel);
-
-
-
     }
 
     public void NextScene()
     {
-        Debug.Log("NS");
         LevelPick();
         StartPause();
-        
-
         
 
         StreamWriter writelevel = File.AppendText(FILE_NAME);
@@ -187,7 +182,7 @@ public class Randomizev2 : MonoBehaviour
 
         if (nextLevel == currentLevel)
         {
-            TipboxManager.text_tip = "YOU ARE DONE. PRESS Ctrl+P TO EXIT PILOT TEST.";
+            TipboxManager.text_tip = "YOU ARE DONE. PRESS ESC TO EXIT PILOT TEST.";
         } else
         {
             currentLevel = nextLevel;
@@ -200,14 +195,12 @@ public class Randomizev2 : MonoBehaviour
         {
             ParticipantLog.trialPhase = 1;
         }
-
         LogManager.newTrial = true;
-        Debug.Log(LogManager.objTextFile);
+        
+        
 
-
-
-
-
+               
+        
     }
 
 }

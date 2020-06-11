@@ -22,8 +22,7 @@ public class TipboxManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        text_targetobj = LogManager.totalDistanceTraveled.ToString();
-        
+        text_targetobj = LogManager.targetName;
     }
 
     private void OnGUI()
@@ -48,5 +47,10 @@ public class TipboxManager : MonoBehaviour
         myStyle.fontStyle = FontStyle.BoldAndItalic;
         myStyle.fontSize = height + 5;
         GUILayout.Label(text_tip, myStyle);
+
+        // Debug Display position data. Uncomment to enable
+/*        myStyle.fontStyle = FontStyle.BoldAndItalic;
+        myStyle.fontSize = height + 5;
+        GUILayout.Label(LogManager.positionData.Replace(",", "\n"), myStyle);*/
     }
 }

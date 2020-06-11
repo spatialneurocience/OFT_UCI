@@ -57,8 +57,8 @@ public class ParticipantLog : MonoBehaviour
         if (File.Exists(file_name_pos))
         {
             Debug.Log("File exists");
-            overwriteButton.gameObject.SetActive(true);
-            appendButton.gameObject.SetActive(true);
+/*            overwriteButton.gameObject.SetActive(true);
+            appendButton.gameObject.SetActive(true);*/
             fileExists.gameObject.SetActive(true);
 
         } else
